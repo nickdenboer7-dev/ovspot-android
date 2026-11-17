@@ -1,0 +1,384 @@
+export type FeedbackCategorie = "kaart_data" | "idee" | "bug" | "overig";
+
+export type FeedbackContext = {
+  view: "instellingen" | "halte" | "rit";
+  stop_id?: string;
+  stop_name?: string;
+  rit_id?: string;
+  rit_datum?: string;
+};
+
+export type RecentFeedbackContext = FeedbackContext & { vastgelegdOp: number };
+
+export type FeedbackInzending = {
+  client_id: string;
+  category: FeedbackCategorie;
+  message: string;
+  contact: string;
+  app_version: string;
+  ota_version: string;
+  os_version: string;
+  reported_at: string;
+  context: FeedbackContext;
+};
+
+export type Modus = "train" | "bus" | "tram" | "metro" | "ferry" | string;
+
+export type LiveRitPositie = {
+  voertuignummer: string;
+  lijnnummer: string;
+  lat: number;
+  lon: number;
+  timestamp: number;
+  leeftijd_s: number;
+  richting: number | null;
+};
+
+export type LiveRitVoertuigAntwoord = {
+  ok: boolean;
+  bron: string;
+  rit_id: string;
+  datum: string;
+  tijdstip: number;
+  beschikbaar: boolean;
+  voertuig: LiveRitPositie | null;
+};
+
+export type RitRef = {
+  trip?: string; datum?: string; voertuig?: string;
+  instap_halte?: string; instap_naam?: string; instap_ms?: number; richting?: string;
+};
+
+export type Vertrek = {
+  lijn: string;
+  lijn_naam: string;
+  modus: Modus;
+  bestemming: string;
+  vervoerder: string;
+  /** Officiële GTFS-routekleuren; bij oudere Live-API's zijn lijn_*-velden beschikbaar. */
+  kleur?: string;
+  tekstkleur?: string;
+  lijn_kleur?: string;
+  lijn_tekstkleur?: string;
+  gepland: string;
+  verwacht: string;
+  vertrek_ms: number | null;
+  vertraging_min: number;
+  live: boolean;
+  vervallen: boolean;
+  spoor: string;
+  rit: RitRef | null;
+};
+
+export type Storing = {
+  id: string;
+  soort: "minder" | "halte" | "omleiding" | "info" | string;
+  label: string;
+  titel: string;
+  tekst: string;
+  lijnen: string[];
+  /** GTFS-route-modaliteit per melding; ontbreekt op oudere API-servers. */
+  modi?: Modus[];
+  modus?: Modus;
+  ernst: string;
+  vanaf_ms: number | null;
+  tot_ms: number | null;
+  halte_ids: string[];
+  haltes?: { id: string; naam: string }[];
+};
+
+export type Halte = {
+  ok: boolean;
+  id: string;
+  naam: string;
+  plaats: string;
+  lat: number | null;
+  lon: number | null;
+  modi: Modus[];
+  bijgewerkt: string;
+  verouderd: boolean;
+  /** Volledig statisch GTFS-routeoverzicht voor deze halte, ook zonder vertrek nu. */
+  lijncatalogus?: ZoekLijn[];
+  vertrekken: Vertrek[];
+  storingen: Storing[];
+};
+
+/** /app/v2/vertrektijden: echte fysieke haltes binnen 350 m van het station. */
+export type StationVertrektijden = {
+  ok: boolean;
+  halte_id: string | null;
+  naam: string;
+  lat: number;
+  lon: number;
+  cluster_straal_m: number;
+  types: Modus[];
+  bijgewerkt: string;
+  nacht_fallback: boolean;
+  /** Alle GTFS-routekoppelingen op echte perrons binnen de 350m-cluster. */
+  lijncatalogus?: ZoekLijn[];
+  aantal: number;
+  haltes: { id: string; naam: string; afstand_m: number; perron: string }[];
+  vertrekken: (Vertrek & {
+    type: Modus; lijnnummer: string; stop_id: string;
+    halte: string; haltepaal: string | null; perron: string | null;
+    planned_departure: string; expected_departure: string;
+  })[];
+};
+
+/** /app/v2/lijnvertrekken: volledige gekozen lijn voor deze GTFS-dienstdag. */
+export type LijnVertrekken = {
+  ok: boolean;
+  halte_id: string;
+  lijn: string;
+  modus: Modus | "alles";
+  datum: string;
+  bijgewerkt: string;
+  aantal: number;
+  vertrekken: Vertrek[];
+  volgende_rit: Vertrek | null;
+};
+
+export type DichtbijHalte = {
+  id: string;
+  naam: string;
+  plaats: string;
+  afstand_m: number;
+  lat: number | null;
+  lon: number | null;
+  modi: Modus[];
+  lijnen: string[];
+  vertrekken: Vertrek[];
+  storingen_aantal?: number;
+  fout: string | null;
+};
+
+export type Dichtbij = {
+  ok: boolean;
+  bijgewerkt: string;
+  haltes: DichtbijHalte[];
+  radius?: number;
+  heeft_meer?: boolean;
+  volgende_offset?: number | null;
+};
+
+export type HalteState = "PASSED" | "ARRIVED" | "APPROACHING" | "SCHEDULED";
+export type RitStatus = "DRIVING" | "ARRIVED" | "SCHEDULED" | "PASSED" | "INCOMING" | string;
+
+export type RitHalte = {
+  id: string;
+  naam: string;
+  plaats: string;
+  gepland: string;
+  verwacht: string;
+  tijd_ms: number | null;
+  aankomst: string;
+  vertrek: string;
+  vertraging_min: number;
+  live_tijd: boolean;
+  spoor: string;
+  spoor_gewijzigd: { van: string; naar: string } | null;
+  status: "geweest" | "huidig" | "komt";
+  state?: HalteState;
+  vervalt: boolean;
+};
+
+export type NuHier = {
+  bij_halte: boolean;
+  na_index: number;
+  volgende_index: number;
+  volgende_naam: string;
+  over_min: number | null;
+  gps_leeftijd_s: number | null;
+};
+
+export type RitVoertuig = {
+  nummer?: string | null;
+  snelheid_kmh?: number | null;
+  soort?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  leeftijd_s?: number | null;
+};
+
+export type RitKaartPunt = { latitude: number; longitude: number };
+
+export type RitKaartHalte = RitKaartPunt & {
+  stop_id: string;
+  stop_name: string;
+  stop_sequence: number;
+  gepasseerd?: boolean;
+};
+
+export type Rit = {
+  ok: boolean;
+  id: string;
+  lijn: string;
+  lijn_naam: string;
+  modus: Modus;
+  bestemming: string;
+  vervoerder: string;
+  datum: string;
+  live: boolean;
+  vertraging_min: number;
+  vervallen: boolean;
+  nu_hier: NuHier | null;
+  positie_betrouwbaar?: boolean;
+  live_positie?: boolean;
+  gps_betrouwbaar?: boolean;
+  rit_status?: RitStatus;
+  status_omschrijving?: string | null;
+  voertuig?: RitVoertuig | null;
+  voertuig_info?: RitVoertuig | null;
+  gps_leeftijd_s?: number | null;
+  /** Treinen: type (VIRM, SLT …), bakken, lengte en stelnummers uit NS; ontbreekt als NS niets weet. */
+  materieel_info?: { type: string | null; bakken: number | null; lengte_m: number | null;
+    stel: string[]; korter?: boolean } | null;
+  /** Ritnummer (journeynummer) uit de dienstregeling, zoals reizigers het kennen. */
+  rit_nummer?: string | null;
+  /** Vorige rit van hetzelfde voertuig (zelfde omloop), alleen als de server die kent. */
+  vorige_rit?: { lijn?: string; bestemming?: string; vertrek?: string; rit_nummer?: string } | null;
+  haltes: RitHalte[];
+  /** Geordende GTFS shape (of fysieke haltes als fallback), optioneel op oudere API's. */
+  shape?: RitKaartPunt[];
+  stops?: RitKaartHalte[];
+  route_color?: string;
+  shape_bron?: "gtfs" | "stops" | "geen";
+  storingen: Storing[];
+  bijgewerkt: string;
+};
+
+export type P2000Soort = "spoor" | "tram" | "metro" | "bus" | "brug" | "weg" | string;
+export type P2000Melding = {
+  uid: string;
+  ts_ms: number;
+  tijd: string;
+  leeftijd_min: number;
+  soort: P2000Soort;
+  dienst: string;
+  prio: number | null;
+  plaats: string;
+  locatie: string;
+  tekst: string;
+  lat: number | null;
+  lon: number | null;
+  precies: boolean;
+  afstand_m: number | null;
+  /** Alleen de plaats is bekend, niet de exacte locatie. */
+  indicatief: boolean;
+  /** Aantal gemelde berichten over hetzelfde incident. */
+  aantal: number;
+  bron: "P2000" | string;
+};
+export type P2000Antwoord = { ok: boolean; meldingen: P2000Melding[]; aantal: number; uren: number; bijgewerkt_ms: number; bron_beschikbaar: boolean };
+
+export type SpoorZekerheid = "bevestigd_door_bericht" | "onzeker" | string;
+export type SpoorIncident = {
+  id: string;
+  tis_code: string;
+  label: string;
+  bron: string;
+  /** ISO 8601 in UTC. */
+  meldingstijd: string;
+  locatie: string;
+  plaats: string;
+  station: string;
+  oorspronkelijke_omschrijving: string;
+  regio_icb: string;
+  status: string;
+  verloopt_op: string;
+  zekerheid: SpoorZekerheid;
+  gevolgen: string;
+  presentatietekst: string;
+};
+export type SpoorAntwoord = {
+  ok?: boolean;
+  bijgewerkt: string;
+  bron_laatste_bericht: string | null;
+  status: "actueel" | "bron_verouderd" | string;
+  statusmelding: string;
+  incidenten: SpoorIncident[];
+};
+
+export type RitStatusStoring = { id: string; titel: string; omschrijving: string; soort: string; geldig_tot: string | null; bron: string; zekerheid?: "zeker" | "onzeker" | string };
+export type RitStatusItem = { id: string; status: "ok" | "storing" | "buiten_venster" | "geen_dag" | string; venster_start?: string; venster_eind?: string; volgende_check_vanaf?: string | null; storingen: RitStatusStoring[] };
+export type RitStatusAntwoord = { ok: boolean; bijgewerkt: string; ritten: RitStatusItem[] };
+
+export type StoringenAntwoord = { ok: boolean; bijgewerkt: string; aantal: number; storingen: Storing[]; niet_geladen: number; gevraagd?: number; gecontroleerd?: number };
+
+export type ZoekLijn = {
+  lijn: string;
+  modus: Modus;
+  vervoerder: string;
+  kleur?: string;
+  tekstkleur?: string;
+};
+
+export type ZoekResultaat = {
+  id: string;
+  soort: string;
+  naam: string;
+  plaats: string;
+  modi: Modus[];
+  lijnen_aantal: number | null;
+  lijnen?: ZoekLijn[];
+  /** Uitsluitend officiële GTFS-stopgegevens; ontbrekend bij oudere API's. */
+  omschrijving?: string;
+  modus_omschrijvingen?: Record<string, string>;
+  stop_desc?: string;
+  perroncode?: string;
+  platform_code?: string;
+  sub?: string;
+  lat: number | null;
+  lon: number | null;
+};
+
+export type LijnResultaat = {
+  route_key: string; lijn: string; modus: Modus; vervoerder: string;
+  kleur?: string | null; tekstkleur?: string | null; naam: string;
+  richtingen: { richting_id: number; bestemming: string; haltes_aantal: number }[];
+  afstand_m?: number | null;
+};
+export type Zoek = { ok: boolean; query: string; resultaten: ZoekResultaat[]; lijn_resultaten?: LijnResultaat[] };
+export type LijnHaltes = {
+  ok: boolean; route_key: string; lijn: string; richting_id: number; bestemming: string;
+  haltes: { halte_id: string; naam: string; plaats: string; groep: string | null; volgorde: number }[];
+};
+
+export type FavHalte = { id: string; naam: string; plaats: string };
+export type FavLijn = {
+  id: string;
+  halte: FavHalte;
+  lijn: string;
+  richting: string;
+  modus: Modus;
+  vervoerder: string;
+  kleur?: string;
+  tekstkleur?: string;
+};
+
+export type Thema = "systeem" | "licht" | "donker" | "schema";
+export type Tekstgrootte = "klein" | "normaal" | "groot";
+export type Filter = "alles" | "trein" | "bus";
+export type Startscherm = "index" | "favorieten" | "storingen";
+
+export type Instellingen = {
+  thema: Thema;
+  /** Alleen bij thema "schema": hele uren waartussen de app donker is. */
+  donkerVan: number;
+  donkerTot: number;
+  taalVoorkeur: "auto" | "nl" | "en";
+  startscherm: Startscherm;
+  schermAanhouden: boolean;
+  /** Afgeleid van tekstgrootte: true bij Groot. Blijft bestaan voor de lay-outkeuzes die erop leunen. */
+  groteTekst: boolean;
+  tekstgrootte: Tekstgrootte;
+  hoogContrast: boolean;
+  toonVertrekpreviews: boolean;
+  liveVoertuigen: boolean;
+  databesparing: boolean;
+  storingenPush: boolean;
+  // Bestaande voorkeuren blijven beschikbaar voor GPS-fallback en halteborden.
+  filter: Filter;
+  straal: number;
+  thuis: { naam: string; plaats: string; lat: number; lon: number } | null;
+};
